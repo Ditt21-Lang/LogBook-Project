@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:logbook_app_001/features/logbook/log_view.dart';
+import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart'; 
+import 'package:logbook_app_001/features/auth/login_view.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'id_ID';
   //Load .env
   await dotenv.load(fileName: ".env");
+
+  //Inisialisas HIVE
+  await Hive.initFlutter();
+  Hive.registerAdapter(LogModelAdapter());
+  Hive.registerAdapter(LogCategoryAdapter());
+  await Hive.openBox<LogModel>(
+    'offline_logs',
+  );
+  await Hive.openBox('pending_ops');
 
   final prefs = await SharedPreferences.getInstance();
   final bool isOnboardingDone = prefs.getBool("isOnboardingDone") ?? false;
@@ -30,7 +43,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
-      home: isOnboardingDone ? const LogView() : OnboardingView(),
+      home: isOnboardingDone ? const LoginView() : OnboardingView(),
     );
   }
 }

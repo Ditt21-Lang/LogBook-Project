@@ -1,15 +1,33 @@
+import 'package:logbook_app_001/features/auth/models/app_user.dart';
+
 class LoginController {
-  final Map<String, String> users = {
-    "atmint": "123",
-    "gilang": "ohh",
-    "Biji": "Kocak",
+  final Map<String, Map<String, String>> users = {
+    "atmint": {
+      "password": "123",
+      "role": "Ketua",
+      "teamId": "team_alpha",
+    },
+    "gilang": {
+      "password": "ohh",
+      "role": "Asisten",
+      "teamId": "team_alpha",
+    },
+    "Biji": {
+      "password": "kocak",
+      "role": "Anggota",
+      "teamId": "team_alpha",
+    }
   };
 
-  // Fungsi ini mengembalikan nilai true jika login valid, false jika tidak
-  bool login(String username, String password) {
-    if (users.containsKey(username)) {
-      return users[username] == password;
-    }
-    return false;
+  AppUser? login(String username, String password){
+    final data = users[username];
+    if (data == null) return null;
+    if (data["password"] != password) return null;
+
+    return AppUser(
+      username: username, 
+      role: data["role"] ?? "Anggota", 
+      teamId: data["teamId"] ?? "no_team"
+    );
   }
 }

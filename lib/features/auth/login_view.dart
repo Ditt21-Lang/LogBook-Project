@@ -20,17 +20,22 @@ class _LoginViewState extends State<LoginView> {
   void _handleLogin() {
     String user = _userController.text;
     String pass = _passController.text;
-
-    bool isSuccess = _controller.login(user, pass);
+    final appUser = _controller.login(user, pass);
 
     if (user.isEmpty || pass.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Username/Password tidak boleh kosong')),
       );
-    } else if (isSuccess) {
+    } else if (appUser != null) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LogView()),
+        MaterialPageRoute(
+          builder: (context) => LogView(
+            currentUsername: appUser.username,
+            currentRole: appUser.role,
+            currentTeamId: appUser.teamId,
+          ),
+        ),
       );
     } else {
       _loginAttemps++;

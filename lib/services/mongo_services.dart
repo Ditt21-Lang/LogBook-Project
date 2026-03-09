@@ -31,14 +31,18 @@ class MongoService {
   /// Inisialisasi Koneksi ke MongoDB Atlas
   Future<void> connect() async {
     try {
+      if (_db != null && _db!.isConnected && _collection != null) {
+        return;
+      }
+
       final dbUri = dotenv.env['MONGODB_URI'];
       if (dbUri == null) throw Exception("MONGODB_URI tidak ditemukan di .env");
 
       _db = await Db.create(dbUri);
 
-      // Timeout 15 detik agar lebih toleran terhadap jaringan seluler
+      // Timeout 8 detik agar lebih toleran terhadap jaringan seluler
       await _db!.open().timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 8),
         onTimeout: () {
           throw Exception(
             "Koneksi Timeout. Cek IP Whitelist (0.0.0.0/0) atau Sinyal HP.",
@@ -82,7 +86,7 @@ class MongoService {
         source: _source,
         level: 1,
       );
-      return [];
+      rethrow;
     }
   }
 
@@ -115,7 +119,7 @@ class MongoService {
         throw Exception("ID Log tidak ditemukan untuk update");
       }
 
-      await collection.replaceOne(where.id(log.id!), log.toMap());
+     await collection.replaceOne(where.id(ObjectId.fromHexString(log.id!)),log.toMap(),);
 
       await LogHelper.writeLog(
         "DATABASE: Update '${log.title}' Berhasil",

@@ -1,25 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/features/logbook/log_controller.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'dart:ui';
 
 import 'package:logbook_app_001/helpers/log_helper.dart';
-import 'package:logbook_app_001/services/mongo_services.dart';
+import 'package:logbook_app_001/services/access_control_services.dart';
+import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
 
 class LogView extends StatefulWidget {
-  const LogView({super.key});
+  final String currentUsername;
+  final String currentRole;
+  final String currentTeamId;
+
+  const LogView({
+    super.key,
+    required this.currentUsername,
+    this.currentRole = 'Anggota',
+    this.currentTeamId = 'no_team',
+  });
+
   @override
   State<LogView> createState() => _LogViewState();
 }
 
 class _LogViewState extends State<LogView> {
   late LogController _controller;
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _contentController = TextEditingController();
-  LogCategory _selectedCategory = LogCategory.pribadi;
   bool _isLoading = true;
   bool _isOffline = true;
+  String get _username => widget.currentUsername;
+  String get _role => widget.currentRole;
+  String get _teamId => widget.currentTeamId;
 
   @override
   void initState() {
@@ -31,16 +43,18 @@ class _LogViewState extends State<LogView> {
   Future<void> _initDatabase() async {
     try {
       await LogHelper.writeLog("UI: Memulai Inisialisasi Database...", source: "log_view.dart");
-      await LogHelper.writeLog("UI Menghubungi MongoService.Connect()...", source: "log_view.dart");
-      await MongoService().connect().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw Exception("Koneksi Cloud Timeout: Periksa sinyal/IP Whitelist."),
-      );
-      await LogHelper.writeLog("Ui: Koneksi MongoService BERHASIL", source: "log_view.dart");
-      await LogHelper.writeLog("UI: Memanggil controller.loadFromDisk()...", source: "log_view.dart");
-      await _controller.loadFromDisk();
+      final isOnline = await _controller.loadLogs();
+
       await LogHelper.writeLog("UI: Data berhasil dimuat ke notifier", source: "log_view.dart");
-      _isOffline = false;
+      _isOffline = !isOnline;
+      if (!isOnline && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Offline Mode: Tidak Terhubung ke Cloud"),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       _isOffline = true;
       await LogHelper.writeLog("UI: error - $e", source: "log_view.dart", level: 1);
@@ -56,11 +70,17 @@ class _LogViewState extends State<LogView> {
 
   Future<void> _refreshData() async {
     try {
-      await MongoService().connect();
-      await _controller.loadFromDisk();
-      setState(() => _isOffline = false);
+      final isOnline = await _controller.loadLogs();
+      setState(() => _isOffline = !isOnline);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Data berhasil diperbarui dari Cloud"), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text(
+            isOnline
+                ? "Data berhasil diperbarui dari Cloud"
+                : "Offline Mode: Tidak Terhubung ke Cloud",
+          ),
+          backgroundColor: isOnline ? Colors.green : Colors.orange,
+        ),
       );
     } catch (e) {
       setState(() => _isOffline = true);
@@ -78,6 +98,24 @@ class _LogViewState extends State<LogView> {
     }
   }
 
+  void _goToEditor({LogModel? log, int? index}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LogEditorPage(
+          log: log,
+          index: index,
+          controller: _controller,
+          currentUser: {
+            'uid': _username,
+            'role': _role,
+            'teamId': _teamId,
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,8 +126,8 @@ class _LogViewState extends State<LogView> {
           statusBarColor: Color(0xFFD4956A),
           statusBarIconBrightness: Brightness.light,
         ),
-        title: const Text(
-          'Log View',
+        title: Text(
+          "Log View: Hello, $_username ($_role)",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
@@ -97,6 +135,47 @@ class _LogViewState extends State<LogView> {
             letterSpacing: 0.3,
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Konfirmasi logout'),
+                    content: const Text(
+                      'Yakin ingin keluar? Data yang disimpan mungkin akan hilang',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LoginView(),
+                            ),
+                            (routes) => false,
+                          );
+                        },
+                        child: const Text(
+                          'Ya, keluar',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       // Single RefreshIndicator at the top level
@@ -244,9 +323,21 @@ class _LogViewState extends State<LogView> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final log = currentLogs[index];
+                        final canUpdate = AccessControlServices.canPerform(
+                          _role,
+                          'update',
+                          isOwner: log.authorId == widget.currentUsername,
+                        );
+                        final canDelete = AccessControlServices.canPerform(
+                          _role,
+                          'delete',
+                          isOwner: log.authorId == widget.currentUsername,
+                        );
                         return Dismissible(
                           key: Key(log.date.toIso8601String()),
-                          direction: DismissDirection.endToStart,
+                          direction: canDelete
+                              ? DismissDirection.endToStart
+                              : DismissDirection.none,
                           background: Container(
                             color: Colors.red,
                             alignment: Alignment.centerRight,
@@ -254,7 +345,7 @@ class _LogViewState extends State<LogView> {
                             child: const Icon(Icons.delete, color: Colors.white),
                           ),
                           onDismissed: (direction) {
-                            _controller.removeLog(log);
+                            _controller.removeLog(log, index, _role, _username);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Catatan Dihapus')),
                             );
@@ -296,16 +387,26 @@ class _LogViewState extends State<LogView> {
                                   ),
                                 ],
                               ),
-                              trailing: Wrap(
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => _showEditDialog(index, log),
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _controller.removeLog(log),
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                  ),
+                                  if (canUpdate)
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      onPressed: () => _goToEditor(log: log, index: index),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  if (canDelete)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () {
+                                        _controller.removeLog(log, index, _role, _username);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Catatan Dihapus')),
+                                        );
+                                      },
+                                      visualDensity: VisualDensity.compact,
+                                    ),
                                 ],
                               ),
                             ),
@@ -324,90 +425,9 @@ class _LogViewState extends State<LogView> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(),
+        onPressed: () => _goToEditor(),
         backgroundColor: const Color(0xFFD4956A),
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  void _showAddDialog() {
-    _selectedCategory = LogCategory.pribadi;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tambah Catatan Baru'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(hintText: "Judul Catatan"),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(hintText: "Tambahkan Deskripsi Catatan"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<LogCategory>(
-                initialValue: _selectedCategory,
-                items: LogCategory.values.map((category) {
-                  return DropdownMenuItem<LogCategory>(
-                    value: category,
-                    child: Text(category.name.toUpperCase()),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCategory = value!);
-                },
-                decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              _controller.addLog(_titleController.text, _contentController.text, _selectedCategory);
-              _titleController.clear();
-              _contentController.clear();
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEditDialog(int index, LogModel log) {
-    _titleController.text = log.title;
-    _contentController.text = log.description;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Catatan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: _titleController),
-            TextField(controller: _contentController),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              _controller.updateLog(log, _titleController.text, _contentController.text, _selectedCategory);
-              _titleController.clear();
-              _contentController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Update'),
-          ),
-        ],
       ),
     );
   }

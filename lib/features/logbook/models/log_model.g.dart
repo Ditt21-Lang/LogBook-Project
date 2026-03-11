@@ -24,13 +24,14 @@ class LogModelAdapter extends TypeAdapter<LogModel> {
       category: fields[4] as LogCategory,
       authorId: fields[5] as String,
       teamId: fields[6] as String,
+      isPublic: fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, LogModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class LogModelAdapter extends TypeAdapter<LogModel> {
       ..writeByte(5)
       ..write(obj.authorId)
       ..writeByte(6)
-      ..write(obj.teamId);
+      ..write(obj.teamId)
+      ..writeByte(7)
+      ..write(obj.isPublic);
   }
 
   @override
@@ -66,26 +69,26 @@ class LogCategoryAdapter extends TypeAdapter<LogCategory> {
   LogCategory read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return LogCategory.pekerjaan;
+        return LogCategory.mechanical;
       case 1:
-        return LogCategory.pribadi;
+        return LogCategory.electronic;
       case 2:
-        return LogCategory.urgent;
+        return LogCategory.software;
       default:
-        return LogCategory.pekerjaan;
+        return LogCategory.mechanical;
     }
   }
 
   @override
   void write(BinaryWriter writer, LogCategory obj) {
     switch (obj) {
-      case LogCategory.pekerjaan:
+      case LogCategory.mechanical:
         writer.writeByte(0);
         break;
-      case LogCategory.pribadi:
+      case LogCategory.electronic:
         writer.writeByte(1);
         break;
-      case LogCategory.urgent:
+      case LogCategory.software:
         writer.writeByte(2);
         break;
     }

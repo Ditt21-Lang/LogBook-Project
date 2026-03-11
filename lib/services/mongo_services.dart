@@ -68,7 +68,7 @@ class MongoService {
   }
 
   /// READ: Mengambil data dari Cloud
-  Future<List<LogModel>> getLogs() async {
+  Future<List<LogModel>> getLogs(String userId) async {
     try {
       final collection = await _getSafeCollection(); // Gunakan jalur aman
 
@@ -78,7 +78,13 @@ class MongoService {
         level: 3,
       );
 
-      final List<Map<String, dynamic>> data = await collection.find().toList();
+      final List<Map<String, dynamic>> data = await collection.find({
+        '\$or': [
+          {'authorId': userId},
+          {'isPublic': true}
+        ]
+      }).toList();
+
       return data.map((json) => LogModel.fromMap(json)).toList();
     } catch (e) {
       await LogHelper.writeLog(

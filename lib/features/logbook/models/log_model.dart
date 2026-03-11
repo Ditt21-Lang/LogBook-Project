@@ -5,9 +5,9 @@ part 'log_model.g.dart';
 
 @HiveType(typeId: 1)
 enum LogCategory { 
-  @HiveField(0) pekerjaan, 
-  @HiveField(1) pribadi, 
-  @HiveField(2) urgent 
+  @HiveField(0) mechanical, 
+  @HiveField(1) electronic, 
+  @HiveField(2) software 
 }
 
 @HiveType(typeId: 0)
@@ -33,6 +33,9 @@ class LogModel {
   @HiveField(6)
   final String teamId; // ID kelompok (Collaborative Team ID)
 
+  @HiveField(7)
+  final bool isPublic;
+
   LogModel({
     this.id,
     required this.title,
@@ -41,6 +44,7 @@ class LogModel {
     required this.category, 
     required this.authorId, 
     required this.teamId,
+    required this.isPublic,
   });
 
   ///  Convert Object → Map (kirim ke MongoDB)
@@ -53,6 +57,7 @@ class LogModel {
       'category': category.name,
       'authorId': authorId,
       'teamId': teamId,
+      'isPublic': isPublic,
     };
   }
 
@@ -76,10 +81,11 @@ class LogModel {
 
       category: LogCategory.values.firstWhere(
         (e) => e.name == map['category'],
-        orElse: () => LogCategory.pribadi,
+        orElse: () => LogCategory.software,
       ), 
       authorId: map['authorId'] ?? 'unknown_user', 
       teamId: map['teamId'] ?? 'no_team',
+      isPublic: map['isPublic'] ?? false,
     );
   }
 
@@ -92,6 +98,7 @@ class LogModel {
     LogCategory? category,
     String? authorId,
     String? teamId,
+    bool? isPublic,
   }) {
     return LogModel(
       id: id != null ? id.toHexString() : this.id,
@@ -101,6 +108,7 @@ class LogModel {
       category: category ?? this.category, 
       authorId: authorId ?? this.authorId, 
       teamId: teamId ?? this.teamId,
+      isPublic: isPublic ?? this.isPublic,
     );
   }
 }

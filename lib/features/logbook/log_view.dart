@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'package:logbook_app_001/helpers/log_helper.dart';
 import 'package:logbook_app_001/services/access_control_services.dart';
 import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
+import 'package:lottie/lottie.dart';
 
 class LogView extends StatefulWidget {
   final String currentUsername;
@@ -43,7 +44,7 @@ class _LogViewState extends State<LogView> {
   Future<void> _initDatabase() async {
     try {
       await LogHelper.writeLog("UI: Memulai Inisialisasi Database...", source: "log_view.dart");
-      final isOnline = await _controller.loadLogs();
+      final isOnline = await _controller.loadLogs(_username);
 
       await LogHelper.writeLog("UI: Data berhasil dimuat ke notifier", source: "log_view.dart");
       _isOffline = !isOnline;
@@ -70,7 +71,7 @@ class _LogViewState extends State<LogView> {
 
   Future<void> _refreshData() async {
     try {
-      final isOnline = await _controller.loadLogs();
+      final isOnline = await _controller.loadLogs(_username);
       setState(() => _isOffline = !isOnline);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -92,9 +93,9 @@ class _LogViewState extends State<LogView> {
 
   Color _getCategoryColor(LogCategory category) {
     switch (category) {
-      case LogCategory.pekerjaan: return Colors.blue.shade100;
-      case LogCategory.pribadi:   return Colors.green.shade100;
-      case LogCategory.urgent:    return Colors.red.shade100;
+      case LogCategory.electronic: return Colors.blue.shade100;
+      case LogCategory.mechanical:   return Colors.green.shade100;
+      case LogCategory.software:    return Colors.indigo.shade100;
     }
   }
 
@@ -255,7 +256,7 @@ class _LogViewState extends State<LogView> {
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                           child: TextField(
-                            onChanged: (value) => _controller.searchLog(value),
+                            onChanged: (value) => _controller.searchLog(value, _username),
                             style: const TextStyle(color: Color(0xFF3D2B1F), fontSize: 15),
                             decoration: InputDecoration(
                               hintText: 'Cari catatan...',
@@ -298,20 +299,25 @@ class _LogViewState extends State<LogView> {
               ValueListenableBuilder(
                 valueListenable: _controller.filteredLogs,
                 builder: (context, currentLogs, child) {
-                  if (currentLogs.isEmpty) {
+                  final displayLogs = currentLogs.where((log) {
+                    return log.authorId == _username || log.isPublic == true;
+                  }).toList();
+
+                  if (displayLogs.isEmpty) {
                     return SliverFillRemaining(
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Image.asset(
-                              'assets/images/noLogPicture.png',
-                              width: 180,
-                              height: 180,
+                            Lottie.asset(
+                              'assets/images/emptyState.json',
+                              width: 250,
+                              height: 250,
                               fit: BoxFit.contain,
+                              repeat: true
                             ),
                             const SizedBox(height: 16),
-                            const Text('Belum Ada Catatan', style: TextStyle(fontSize: 16)),
+                            const Text('Belum ada aktivitas hari ini? Mulai catat kemajuan proyek Anda!', style: TextStyle(fontSize: 16)),
                           ],
                         ),
                       ),
@@ -322,17 +328,10 @@ class _LogViewState extends State<LogView> {
                   return SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final log = currentLogs[index];
-                        final canUpdate = AccessControlServices.canPerform(
-                          _role,
-                          'update',
-                          isOwner: log.authorId == widget.currentUsername,
-                        );
-                        final canDelete = AccessControlServices.canPerform(
-                          _role,
-                          'delete',
-                          isOwner: log.authorId == widget.currentUsername,
-                        );
+                        final log = displayLogs[index];
+                        final isOwner = log.authorId == _username;
+                        final canUpdate = isOwner;
+                        final canDelete = isOwner;
                         return Dismissible(
                           key: Key(log.date.toIso8601String()),
                           direction: canDelete
@@ -413,7 +412,7 @@ class _LogViewState extends State<LogView> {
                           ),
                         );
                       },
-                      childCount: currentLogs.length,
+                      childCount: displayLogs.length,
                     ),
                   );
                 },

@@ -24,16 +24,21 @@ class LogEditorPage extends StatefulWidget {
 class _LogEditorPageState extends State<LogEditorPage> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
+  late bool _isPublic;
+  late LogCategory _selectedCategory;
 
   @override
   void initState() {
+    _selectedCategory = widget.log?.category ?? LogCategory.software;
     super.initState();
     _titleController = TextEditingController(text: widget.log?.title ?? '');
     _descController = TextEditingController(
       text: widget.log?.description ?? '',
     );
 
-    // TAMBAHKAN INI: Listener agar Pratinjau terupdate otomatis
+    _isPublic = widget.log?.isPublic ?? false;
+
+    // Listener agar Pratinjau terupdate otomatis
     _descController.addListener(() {
       setState(() {});
     });
@@ -53,17 +58,22 @@ class _LogEditorPageState extends State<LogEditorPage> {
       await widget.controller.addLog(
         _titleController.text,
         _descController.text,
-        LogCategory.pribadi,
+        _selectedCategory,
         authorId: userId,
         teamId: teamId,
+        isPublic: _isPublic,
       );
+      if (mounted) Navigator.pop(context);
     } else {
       // Update
       final ok = await widget.controller.updateLog(
-        widget.log!,
+        widget.log!.copyWith(
+          isPublic: _isPublic,
+          category: _selectedCategory,
+        ),
         _titleController.text,
         _descController.text,
-        widget.log!.category,
+        _selectedCategory,
         widget.index!,
         userRole,
         userId,
@@ -116,6 +126,67 @@ class _LogEditorPageState extends State<LogEditorPage> {
                   TextField(
                     controller: _titleController,
                     decoration: const InputDecoration(labelText: "Judul"),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<LogCategory>(
+                    value: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: "Kategori",
+                      prefixIcon: Icon(Icons.category_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: LogCategory.values.map((category) {
+                      Color categoryColor;
+                      IconData categoryIcon;
+
+                      switch (category) {
+                        case LogCategory.mechanical:
+                          categoryColor = Colors.green;
+                          categoryIcon = Icons.settings_rounded;
+                          break;
+                        case LogCategory.electronic:
+                          categoryColor = Colors.blue;
+                          categoryIcon = Icons.electric_bolt_rounded;
+                          break;
+                        case LogCategory.software:
+                          categoryColor = Colors.indigo;
+                          categoryIcon = Icons.code_rounded;
+                          break;
+                      }
+
+                      return DropdownMenuItem(
+                        value: category,
+                        child: Row(
+                          children: [
+                            Icon(categoryIcon, color: categoryColor, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              category.name.toUpperCase(),
+                              style: TextStyle(
+                                  color: categoryColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newValue) {
+                      if (newValue != null) {
+                        setState(() => _selectedCategory = newValue);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  SwitchListTile(
+                    title: const Text("Public"),
+                    subtitle: Text(_isPublic ? "Catatan dapat dilihat oleh semua anggota": "Catatan bersifat private"), 
+                    value: _isPublic,
+                    onChanged: (value){
+                      setState(() {
+                        _isPublic = value;
+                      });
+                    },
                   ),
                   const SizedBox(height: 10),
                   Expanded(

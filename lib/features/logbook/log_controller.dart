@@ -45,6 +45,7 @@ class LogController {
       'category': log.category.name,
       'authorId': log.authorId,
       'teamId': log.teamId,
+      'isPublic': log.isPublic,
     };
   }
 
@@ -56,10 +57,11 @@ class LogController {
       date: DateTime.tryParse(data['date']?.toString() ?? '') ?? DateTime.now(),
       category: LogCategory.values.firstWhere(
         (e) => e.name == data['category']?.toString(),
-        orElse: () => LogCategory.pribadi,
+        orElse: () => LogCategory.software,
       ),
       authorId: data['authorId']?.toString() ?? 'unknown_user',
       teamId: data['teamId']?.toString() ?? 'no_team',
+      isPublic: data['isPublic'] ?? false,
     );
   }
 
@@ -107,7 +109,7 @@ class LogController {
   // ===============================
   // LOAD DATA (OFFLINE FIRST)
   // ===============================
-  Future<bool> loadLogs() async {
+  Future<bool> loadLogs(String userId) async {
     // 1. Load dari Hive (instan)
     final localData = _myBox.values.toList();
     logsNotifier.value = localData;
@@ -125,7 +127,7 @@ class LogController {
       }
 
       // 2. Sync dari MongoDB
-      final cloudData = await MongoService().getLogs();
+      final cloudData = await MongoService().getLogs(userId);
 
       // 3. Reconcile: hapus data lokal yang sudah tidak ada di cloud
       final cloudIds = cloudData
@@ -170,6 +172,7 @@ class LogController {
     LogCategory category, {
     required String authorId,
     required String teamId,
+    bool isPublic = false,
   }) async {
     final newLog = LogModel(
       id: ObjectId().toHexString(),
@@ -179,6 +182,7 @@ class LogController {
       category: category,
       authorId: authorId,
       teamId: teamId,
+      isPublic: isPublic,
     );
 
     try {
@@ -229,11 +233,7 @@ class LogController {
     String userId,
   ) async {
     // Check perizinan
-    if (!AccessControlServices.canPerform(
-      userRole,
-      'update',
-      isOwner: oldLog.authorId == userId,
-    )) {
+    if (oldLog.authorId != userId) {
       await LogHelper.writeLog(
         "Security Breach: Unauthorized update attempt",
         level: 1,
@@ -295,11 +295,7 @@ class LogController {
     String userRole,
     String userId,
   ) async {
-    if (!AccessControlServices.canPerform(
-      userRole,
-      'delete',
-      isOwner: log.authorId == userId,
-    )) {
+    if (log.authorId != userId) {
       await LogHelper.writeLog(
         "Security Breach: Unauthorized delete attempt",
         level: 1,
@@ -333,13 +329,19 @@ class LogController {
   // ===============================
   // SEARCH
   // ===============================
-  void searchLog(String query) {
-    if (query.isEmpty) {
-      filteredLogs.value = logsNotifier.value;
-    } else {
-      filteredLogs.value = logsNotifier.value.where((log) {
-        return log.title.toLowerCase().contains(query.toLowerCase());
-      }).toList();
-    }
+  void searchLog(String query, String username) {
+    final logs = logsNotifier.value;
+
+    filteredLogs.value = logs.where((log) {
+      final matchesQuery =
+          query.isEmpty ||
+          log.title.toLowerCase().contains(query.toLowerCase()) || 
+          log.description.toLowerCase().contains(query.toLowerCase());
+
+      final canView =
+          log.authorId == username || log.isPublic == true;
+
+      return matchesQuery && canView;
+    }).toList();
   }
 }

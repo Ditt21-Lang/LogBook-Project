@@ -20,6 +20,8 @@ class LoginController {
   };
 
   AppUser? login(String username, String password){
+    username.trim();
+
     final data = users[username];
     if (data == null) return null;
     if (data["password"] != password) return null;

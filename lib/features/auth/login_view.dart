@@ -9,7 +9,6 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  // Inisialisasi Otak dan Controller input
   final LoginController _controller = LoginController();
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
@@ -17,8 +16,16 @@ class _LoginViewState extends State<LoginView> {
   bool _isLoginDisabled = false;
   bool _isPasswordHidden = true;
 
+  // ── Brand palette (shared with LogView & LogEditorPage) ──────────────
+  static const _brand     = Color(0xFFD4956A);
+  static const _brandDark = Color(0xFFB87343);
+  static const _surface   = Color(0xFFFFF8F0);
+  static const _border    = Color(0xFFE8C99A);
+  static const _textDark  = Color(0xFF3D2B1F);
+  static const _textMuted = Color(0xFF9C7B5E);
+
   void _handleLogin() {
-    String user = _userController.text;
+    String user = _userController.text.trim();
     String pass = _passController.text;
     final appUser = _controller.login(user, pass);
 
@@ -57,10 +64,7 @@ class _LoginViewState extends State<LoginView> {
     }
 
     if (_loginAttemps == 3) {
-      setState(() {
-        _isLoginDisabled = true;
-      });
-
+      setState(() => _isLoginDisabled = true);
       Future.delayed(const Duration(seconds: 10), () {
         setState(() {
           _isLoginDisabled = false;
@@ -73,91 +77,179 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login Gatekeeper')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            _buildFloatingField(controller: _userController, label: "Username"),
-            const SizedBox(height: 16),
-            _buildFloatingField(
-              controller: _passController,
-              label: "Password",
-              obscureText: _isPasswordHidden,
-              suffixIcon: IconButton(
-                onPressed: () =>
-                    setState(() => _isPasswordHidden = !_isPasswordHidden),
-                icon: Icon(
-                  _isPasswordHidden ? Icons.visibility_off : Icons.visibility,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  colors: _isLoginDisabled
-                      ? [Color(0xFFDDDDDD), Color(0xFFCCCCCC)]
-                      : [Color(0xFF237227), Color(0xFF519A66)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                boxShadow: _isLoginDisabled
-                    ? []
-                    : [
+      backgroundColor: _surface,
+      // No AppBar — cleaner login feel
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Logo / header ─────────────────────────────────────
+                Center(
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: _brand,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF6C63FF).withOpacity(0.35),
+                          color: _brand.withOpacity(0.35),
                           blurRadius: 20,
-                          offset: Offset(0, 8),
+                          offset: const Offset(0, 8),
                         ),
                       ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: _isLoginDisabled ? null : _handleLogin,
-                  child: Center(
-                    child: Text(
-                      "Masuk",
-                      style: TextStyle(
-                        color: _isLoginDisabled
-                            ? Color(0xFFAAAAAA)
-                            : Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                    ),
+                    child: const Icon(
+                      Icons.book_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Center(
+                  child: Text(
+                    "Logbook",
+                    style: TextStyle(
+                      color: _textDark,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    "Masuk untuk melanjutkan",
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 36),
+
+                // ── Username field ────────────────────────────────────
+                _buildField(
+                  controller: _userController,
+                  label: "Username",
+                  prefixIcon: Icons.person_outline_rounded,
+                ),
+                const SizedBox(height: 14),
+
+                // ── Password field ────────────────────────────────────
+                _buildField(
+                  controller: _passController,
+                  label: "Password",
+                  prefixIcon: Icons.lock_outline_rounded,
+                  obscureText: _isPasswordHidden,
+                  suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => _isPasswordHidden = !_isPasswordHidden),
+                    icon: Icon(
+                      _isPasswordHidden
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      color: _textMuted,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Login button ──────────────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        colors: _isLoginDisabled
+                            ? [const Color(0xFFDDDDDD), const Color(0xFFCCCCCC)]
+                            : [_brand, _brandDark],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      boxShadow: _isLoginDisabled
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: _brand.withOpacity(0.40),
+                                blurRadius: 18,
+                                offset: const Offset(0, 7),
+                              ),
+                            ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: _isLoginDisabled ? null : _handleLogin,
+                        child: Center(
+                          child: Text(
+                            "Masuk",
+                            style: TextStyle(
+                              color: _isLoginDisabled
+                                  ? const Color(0xFFAAAAAA)
+                                  : Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+
+                // ── Lockout hint ──────────────────────────────────────
+                if (_isLoginDisabled) ...[
+                  const SizedBox(height: 14),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.timer_outlined, color: _textMuted, size: 14),
+                        SizedBox(width: 5),
+                        Text(
+                          "Tunggu 10 detik sebelum mencoba lagi",
+                          style: TextStyle(color: _textMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // Add this reusable widget at the bottom of your file
-  Widget _buildFloatingField({
+  Widget _buildField({
     required TextEditingController controller,
     required String label,
+    required IconData prefixIcon,
     bool obscureText = false,
     Widget? suffixIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 16,
+            color: _brand.withOpacity(0.07),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
@@ -165,19 +257,20 @@ class _LoginViewState extends State<LoginView> {
       child: TextField(
         controller: controller,
         obscureText: obscureText,
-        style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A2E)),
+        style: const TextStyle(fontSize: 15, color: _textDark),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
+          labelStyle: const TextStyle(color: _textMuted, fontSize: 14),
           floatingLabelStyle: const TextStyle(
-            color: Color(0xFF6C63FF), // accent on focus
+            color: _brandDark,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
+          prefixIcon: Icon(prefixIcon, color: _brandDark, size: 20),
           suffixIcon: suffixIcon,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none, // no border line, shadow does the work
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,

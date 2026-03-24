@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:intl/intl.dart';
-import 'package:logbook_app_001/features/logbook/log_view.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart'; 
 import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Intl.defaultLocale = 'id_ID';
+  await initializeDateFormatting('id_ID', null);
   //Load .env
   await dotenv.load(fileName: ".env");
 

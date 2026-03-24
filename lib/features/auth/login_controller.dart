@@ -16,7 +16,17 @@ class LoginController {
       "password": "kocak",
       "role": "Anggota",
       "teamId": "team_alpha",
-    }
+    },
+    "bujang": {
+      "password": "123", 
+      "role": "Ketua", 
+      "teamId": "team_beta",
+    },
+    "rani": {
+      "password": "123", 
+      "role": "Anggota", 
+      "teamId": "team_beta"
+    },
   };
 
   AppUser? login(String username, String password){

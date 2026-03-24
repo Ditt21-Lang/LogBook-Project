@@ -68,7 +68,7 @@ class MongoService {
   }
 
   /// READ: Mengambil data dari Cloud
-  Future<List<LogModel>> getLogs(String userId) async {
+  Future<List<LogModel>> getLogs(String userId, String teamId) async {
     try {
       final collection = await _getSafeCollection(); // Gunakan jalur aman
 
@@ -79,6 +79,7 @@ class MongoService {
       );
 
       final List<Map<String, dynamic>> data = await collection.find({
+        'teamId': teamId,
         '\$or': [
           {'authorId': userId},
           {'isPublic': true}

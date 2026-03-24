@@ -109,9 +109,11 @@ class LogController {
   // ===============================
   // LOAD DATA (OFFLINE FIRST)
   // ===============================
-  Future<bool> loadLogs(String userId) async {
+  Future<bool> loadLogs(String userId, String teamId) async {
     // 1. Load dari Hive (instan)
-    final localData = _myBox.values.toList();
+    final localData = _myBox.values
+        .where((log) => log.teamId == teamId)
+        .toList();
     logsNotifier.value = localData;
     filteredLogs.value = localData;
     try {
@@ -127,21 +129,9 @@ class LogController {
       }
 
       // 2. Sync dari MongoDB
-      final cloudData = await MongoService().getLogs(userId);
+      final cloudData = await MongoService().getLogs(userId, teamId);
 
-      // 3. Reconcile: hapus data lokal yang sudah tidak ada di cloud
-      final cloudIds = cloudData
-          .map((log) => log.id)
-          .whereType<String>()
-          .toSet();
-      final localKeys = _myBox.keys.map((key) => key.toString()).toList();
-      for (final key in localKeys) {
-        if (!cloudIds.contains(key)) {
-          await _myBox.delete(key);
-        }
-      }
-
-      // 4. Upsert data cloud ke Hive
+      // 3. Upsert data cloud ke Hive
       for (final log in cloudData) {
         await _myBox.put(log.id, log);
       }
@@ -184,6 +174,10 @@ class LogController {
       teamId: teamId,
       isPublic: isPublic,
     );
+
+    if (title.trim().isEmpty){
+      throw Exception("Invalid Title");
+    }
 
     try {
       // 1. Simpan ke Hive (Local First) - Gunakan id sebagai key
@@ -329,7 +323,7 @@ class LogController {
   // ===============================
   // SEARCH
   // ===============================
-  void searchLog(String query, String username) {
+  void searchLog(String query, String username, String teamId) {
     final logs = logsNotifier.value;
 
     filteredLogs.value = logs.where((log) {
@@ -339,7 +333,8 @@ class LogController {
           log.description.toLowerCase().contains(query.toLowerCase());
 
       final canView =
-          log.authorId == username || log.isPublic == true;
+          log.teamId == teamId &&
+          (log.authorId == username || log.isPublic == true);
 
       return matchesQuery && canView;
     }).toList();

@@ -6,7 +6,6 @@ import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'dart:ui';
 
 import 'package:logbook_app_001/helpers/log_helper.dart';
-import 'package:logbook_app_001/services/access_control_services.dart';
 import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
 import 'package:lottie/lottie.dart';
 
@@ -44,7 +43,7 @@ class _LogViewState extends State<LogView> {
   Future<void> _initDatabase() async {
     try {
       await LogHelper.writeLog("UI: Memulai Inisialisasi Database...", source: "log_view.dart");
-      final isOnline = await _controller.loadLogs(_username);
+      final isOnline = await _controller.loadLogs(_username, _teamId);
       await LogHelper.writeLog("UI: Data berhasil dimuat ke notifier", source: "log_view.dart");
       _isOffline = !isOnline;
       if (!isOnline && mounted) {
@@ -73,7 +72,7 @@ class _LogViewState extends State<LogView> {
 
   Future<void> _refreshData() async {
     try {
-      final isOnline = await _controller.loadLogs(_username);
+      final isOnline = await _controller.loadLogs(_username, _teamId);
       setState(() => _isOffline = !isOnline);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -166,34 +165,96 @@ class _LogViewState extends State<LogView> {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('Konfirmasi logout'),
-                    content: const Text(
-                      'Yakin ingin keluar? Data yang disimpan mungkin akan hilang',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Batal'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LoginView(),
-                            ),
-                            (routes) => false,
-                          );
-                        },
-                        child: const Text(
-                          'Ya, keluar',
-                          style: TextStyle(color: Colors.red),
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.logout_rounded,
+                          color: Colors.orange.shade600,
+                          size: 26,
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Keluar dari akun?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Yakin ingin keluar? Data yang belum disimpan mungkin akan hilang.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
-                  );
+                  ),
+                  actions: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text('Batal'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginView(),
+                                ),
+                                (routes) => false,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange.shade50,
+                              foregroundColor: Colors.orange.shade700,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Ya, Keluar',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
                 },
               );
             },
@@ -281,7 +342,7 @@ class _LogViewState extends State<LogView> {
                           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                           child: TextField(
                             onChanged: (value) =>
-                                _controller.searchLog(value, _username),
+                                _controller.searchLog(value, _username, _teamId),
                             style: const TextStyle(
                                 color: Color(0xFF3D2B1F), fontSize: 15),
                             decoration: InputDecoration(
@@ -331,26 +392,37 @@ class _LogViewState extends State<LogView> {
               ValueListenableBuilder(
                 valueListenable: _controller.filteredLogs,
                 builder: (context, currentLogs, child) {
-                  final displayLogs = currentLogs.where((log) {
-                    return log.authorId == _username || log.isPublic == true;
-                  }).toList();
+                final allLogs = _controller.logs.where((log) {
+                  return log.teamId == _teamId &&
+                      (log.authorId == _username || log.isPublic == true);
+                }).toList();
+
+                final displayLogs = currentLogs.where((log) {
+                  return log.teamId == _teamId &&
+                      (log.authorId == _username || log.isPublic == true);
+                }).toList();
 
                   if (displayLogs.isEmpty) {
+                    final isSearchEmpty = allLogs.isNotEmpty;
                     return SliverFillRemaining(
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Lottie.asset(
-                              'assets/images/emptyState.json',
+                              isSearchEmpty 
+                                ? 'assets/images/emptyState.json'
+                                : 'assets/images/empty_search.json',
                               width: 250,
                               height: 250,
                               fit: BoxFit.contain,
                               repeat: true,
                             ),
                             const SizedBox(height: 12),
-                            const Text(
-                              'Belum ada aktivitas hari ini?',
+                            Text(
+                              isSearchEmpty
+                                ? 'Catatan Tidak ditemukan'
+                                : 'Belum ada aktivitas hari ini?',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -358,8 +430,10 @@ class _LogViewState extends State<LogView> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Mulai catat kemajuan proyek Anda!',
+                            Text(
+                              isSearchEmpty
+                              ? 'Coba kata kunci yang lain.'
+                              : 'Mulai catat kemajuan proyek Anda!',
                               style: TextStyle(
                                   fontSize: 13, color: Color(0xFF9C7B5E)),
                             ),
@@ -574,25 +648,90 @@ class _LogCard extends StatelessWidget {
                         showDialog(
                           context: context,
                           builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: const Text('Konfirmasi Hapus'),
-                              content: const Text(
-                                'Yakin ingin Hapus?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Batal'),
-                                ),
-                                TextButton(
-                                  onPressed: onDelete,
-                                  child: const Text(
-                                    'Ya, keluar',
-                                    style: TextStyle(color: Colors.red),
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.red.shade600,
+                                    size: 26,
                                   ),
                                 ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Hapus item ini?',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Tindakan ini tidak dapat dibatalkan. Item akan dihapus secara permanen.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade600,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
                               ],
-                            );
+                            ),
+                            actions: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: const Text('Batal'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        onDelete();
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade50,
+                                        foregroundColor: Colors.red.shade700,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Ya, Hapus',
+                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
                           },
                         );
                       },

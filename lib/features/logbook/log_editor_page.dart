@@ -51,6 +51,18 @@ class _LogEditorPageState extends State<LogEditorPage> {
   }
 
   Future<void> _save() async {
+    final title = _titleController.text.trim();
+
+    if(title.isEmpty){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Judul tidak boleh kosong!"),
+          backgroundColor: Colors.red,  
+          duration: Duration(seconds: 2),
+        )
+      );
+    }
+
     final userId = (widget.currentUser['uid'] ??
             widget.currentUser['id'] ??
             widget.currentUser['username'] ??

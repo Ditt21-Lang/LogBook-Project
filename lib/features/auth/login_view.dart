@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:logbook_app_001/features/auth/login_controller.dart';
 import 'package:logbook_app_001/features/logbook/log_view.dart';
+import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -37,14 +39,13 @@ class _LoginViewState extends State<LoginView> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => LogView(
-            currentUsername: appUser.username,
-            currentRole: appUser.role,
-            currentTeamId: appUser.teamId,
+            builder: (_) => LogView(
+              currentUsername: appUser.username,
+              currentRole: appUser.role,
+              currentTeamId: appUser.teamId,
           ),
         ),
       );
-    } else {
       _loginAttemps++;
       if (_loginAttemps < 3) {
         ScaffoldMessenger.of(context).showSnackBar(

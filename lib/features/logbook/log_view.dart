@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/features/logbook/log_controller.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 import 'dart:ui';
 
 import 'package:logbook_app_001/helpers/log_helper.dart';
@@ -264,227 +265,251 @@ class _LogViewState extends State<LogView> {
         ],
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: const Color(0xFFD4956A),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+          onRefresh: _refreshData,
+          color: const Color(0xFFD4956A),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
 
-                  // ── Offline banner ──────────────────────────────────
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: _isOffline
-                        ? Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD4956A).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFD4956A).withOpacity(0.40),
-                                  width: 1.2,
+                    // ── Offline banner ──────────────────────────────────
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: _isOffline
+                          ? Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4956A).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFD4956A).withOpacity(0.40),
+                                    width: 1.2,
+                                  ),
                                 ),
-                              ),
-                              child: Row(
-                                children: const [
-                                  Icon(Icons.cloud_off_rounded,
-                                      color: Color(0xFFB87343), size: 18),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Center(
-                                      child: Text(
-                                        "Offline Mode - Data Tidak Sinkron",
-                                        style: TextStyle(
-                                          color: Color(0xFF8B5E35),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
+                                child: Row(
+                                  children: const [
+                                    Icon(Icons.cloud_off_rounded,
+                                        color: Color(0xFFB87343), size: 18),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          "Offline Mode - Data Tidak Sinkron",
+                                          style: TextStyle(
+                                            color: Color(0xFF8B5E35),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-
-                  // ── Search bar ──────────────────────────────────────
-                  Center(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.90,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8F0).withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFE8C99A).withOpacity(0.5),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFD4956A).withOpacity(0.12),
-                            blurRadius: 24,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                          child: TextField(
-                            onChanged: (value) =>
-                                _controller.searchLog(value, _username, _teamId),
-                            style: const TextStyle(
-                                color: Color(0xFF3D2B1F), fontSize: 15),
-                            decoration: InputDecoration(
-                              hintText: 'Cari catatan...',
-                              hintStyle: TextStyle(
-                                color:
-                                    const Color(0xFF9C7B5E).withOpacity(0.7),
-                                fontSize: 14,
-                              ),
-                              prefixIcon: const Icon(Icons.search_rounded,
-                                  color: Color(0xFFB5825A), size: 20),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 18),
-                              filled: true,
-                              fillColor: Colors.transparent,
-                            ),
-                          ),
-                        ),
-                      ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                  ),
 
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-
-            // ── Loading state ─────────────────────────────────────────
-            if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFFD4956A)),
-                      SizedBox(height: 16),
-                      Text(
-                        "Menghubungkan ke MongoDB Atlas...",
-                        style: TextStyle(color: Color(0xFF9C7B5E)),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              ValueListenableBuilder(
-                valueListenable: _controller.filteredLogs,
-                builder: (context, currentLogs, child) {
-                final allLogs = _controller.logs.where((log) {
-                  return log.teamId == _teamId &&
-                      (log.authorId == _username || log.isPublic == true);
-                }).toList();
-
-                final displayLogs = currentLogs.where((log) {
-                  return log.teamId == _teamId &&
-                      (log.authorId == _username || log.isPublic == true);
-                }).toList();
-
-                  if (displayLogs.isEmpty) {
-                    final isSearchEmpty = allLogs.isNotEmpty;
-                    return SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Lottie.asset(
-                              isSearchEmpty 
-                                ? 'assets/images/emptyState.json'
-                                : 'assets/images/empty_search.json',
-                              width: 250,
-                              height: 250,
-                              fit: BoxFit.contain,
-                              repeat: true,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              isSearchEmpty
-                                ? 'Catatan Tidak ditemukan'
-                                : 'Belum ada aktivitas hari ini?',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF3D2B1F),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              isSearchEmpty
-                              ? 'Coba kata kunci yang lain.'
-                              : 'Mulai catat kemajuan proyek Anda!',
-                              style: TextStyle(
-                                  fontSize: 13, color: Color(0xFF9C7B5E)),
+                    // ── Search bar ──────────────────────────────────────
+                    Center(
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.90,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8F0).withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFE8C99A).withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFD4956A).withOpacity(0.12),
+                              blurRadius: 24,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  }
-
-                  return SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final log = displayLogs[index];
-                          final isOwner = log.authorId == _username;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _LogCard(
-                              log: log,
-                              isOwner: isOwner,
-                              categoryAccent: _getCategoryAccent(log.category),
-                              categoryBg: _getCategoryBg(log.category),
-                              categoryIcon: _getCategoryIcon(log.category),
-                              onEdit: () => _goToEditor(log: log, index: index),
-                              onDelete: () {
-                                _controller.removeLog(log, index, _role, _username);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Catatan Dihapus')),
-                                );
-                              },
-                              onDismissed: () {
-                                _controller.removeLog(log, index, _role, _username);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Catatan Dihapus')),
-                                );
-                              },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                            child: TextField(
+                              onChanged: (value) =>
+                                  _controller.searchLog(value, _username, _teamId),
+                              style: const TextStyle(
+                                  color: Color(0xFF3D2B1F), fontSize: 15),
+                              decoration: InputDecoration(
+                                hintText: 'Cari catatan...',
+                                hintStyle: TextStyle(
+                                  color:
+                                      const Color(0xFF9C7B5E).withOpacity(0.7),
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: const Icon(Icons.search_rounded,
+                                    color: Color(0xFFB5825A), size: 20),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 18),
+                                filled: true,
+                                fillColor: Colors.transparent,
+                              ),
                             ),
-                          );
-                        },
-                        childCount: displayLogs.length,
+                          ),
+                        ),
                       ),
                     ),
-                  );
-                },
+
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 80)),
-          ],
+              // ── Loading state ─────────────────────────────────────────
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFFD4956A)),
+                        SizedBox(height: 16),
+                        Text(
+                          "Menghubungkan ke MongoDB Atlas...",
+                          style: TextStyle(color: Color(0xFF9C7B5E)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ValueListenableBuilder(
+                  valueListenable: _controller.filteredLogs,
+                  builder: (context, currentLogs, child) {
+                  final allLogs = _controller.logs.where((log) {
+                    return log.teamId == _teamId &&
+                        (log.authorId == _username || log.isPublic == true);
+                  }).toList();
+
+                  final displayLogs = currentLogs.where((log) {
+                    return log.teamId == _teamId &&
+                        (log.authorId == _username || log.isPublic == true);
+                  }).toList();
+
+                    if (displayLogs.isEmpty) {
+                      final isSearchEmpty = allLogs.isNotEmpty;
+                      return SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Lottie.asset(
+                                isSearchEmpty 
+                                  ? 'assets/images/emptyState.json'
+                                  : 'assets/images/empty_search.json',
+                                width: 250,
+                                height: 250,
+                                fit: BoxFit.contain,
+                                repeat: true,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSearchEmpty
+                                  ? 'Catatan Tidak ditemukan'
+                                  : 'Belum ada aktivitas hari ini?',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF3D2B1F),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isSearchEmpty
+                                ? 'Coba kata kunci yang lain.'
+                                : 'Mulai catat kemajuan proyek Anda!',
+                                style: TextStyle(
+                                    fontSize: 13, color: Color(0xFF9C7B5E)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final log = displayLogs[index];
+                            final isOwner = log.authorId == _username;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _LogCard(
+                                log: log,
+                                isOwner: isOwner,
+                                categoryAccent: _getCategoryAccent(log.category),
+                                categoryBg: _getCategoryBg(log.category),
+                                categoryIcon: _getCategoryIcon(log.category),
+                                onEdit: () => _goToEditor(log: log, index: index),
+                                onDelete: () {
+                                  _controller.removeLog(log, index, _role, _username);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Catatan Dihapus')),
+                                  );
+                                },
+                                onDismissed: () {
+                                  _controller.removeLog(log, index, _role, _username);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Catatan Dihapus')),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                          childCount: displayLogs.length,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          ),
         ),
+
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: FloatingActionButton(
+              heroTag: "visionBtn",
+              backgroundColor: Colors.indigo,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const VisionView(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.visibility, color: Colors.white),
+            ),
+          ),
+        ],
       ),
+
+    
       floatingActionButton: FloatingActionButton(
         onPressed: () => _goToEditor(),
         backgroundColor: const Color(0xFFD4956A),
